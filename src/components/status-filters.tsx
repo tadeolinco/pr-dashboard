@@ -10,6 +10,7 @@ import {
 import type { PullRequest } from "@/lib/types";
 import { cn } from "@/lib/utils";
 import { Search, X } from "lucide-react";
+import { useEffect, useRef } from "react";
 
 export function StatusFilters({
   pullRequests,
@@ -111,10 +112,30 @@ function SearchField({
   value: string;
   onChange: (value: string) => void;
 }) {
+  const inputRef = useRef<HTMLInputElement>(null);
+
+  // Cmd/Ctrl+F jumps here instead of the browser's find bar. Only the active
+  // tab's field is mounted, so this always targets the visible one.
+  useEffect(() => {
+    function onKeyDown(event: KeyboardEvent) {
+      if (!(event.metaKey || event.ctrlKey) || event.key.toLowerCase() !== "f")
+        return;
+      if (event.shiftKey || event.altKey) return;
+      const input = inputRef.current;
+      if (!input) return;
+      event.preventDefault();
+      input.focus();
+      input.select();
+    }
+    window.addEventListener("keydown", onKeyDown);
+    return () => window.removeEventListener("keydown", onKeyDown);
+  }, []);
+
   return (
     <div className="relative ml-auto w-full sm:w-64">
       <Search className="pointer-events-none absolute top-1/2 left-2 size-3.5 -translate-y-1/2 text-muted-foreground" />
       <input
+        ref={inputRef}
         type="search"
         aria-label="Search pull requests"
         placeholder="Search title, #, repo, branch, author"
