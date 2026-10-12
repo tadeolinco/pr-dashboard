@@ -9,15 +9,20 @@ import {
 } from "@/lib/review-session/pr-health";
 import type { PullRequest } from "@/lib/types";
 import { cn } from "@/lib/utils";
+import { Search, X } from "lucide-react";
 
 export function StatusFilters({
   pullRequests,
   filters,
   showLocalSessionFilters = true,
+  search,
+  onSearchChange,
 }: {
   pullRequests: PullRequest[];
   filters: DashboardFilters;
   showLocalSessionFilters?: boolean;
+  search: string;
+  onSearchChange: (search: string) => void;
 }) {
   const needsReviewerActive = filters.status === "awaiting_reviewer";
   const staleActive = filters.review === "stale";
@@ -33,7 +38,7 @@ export function StatusFilters({
     (!filters.status || filters.status === "all");
 
   return (
-    <div className="flex flex-wrap gap-2">
+    <div className="flex flex-wrap items-center gap-2">
       <FilterChip
         href={dashboardHref({
           ...filters,
@@ -93,6 +98,43 @@ export function StatusFilters({
             count={pullRequests.filter(isStaleReview).length}
           />
         </>
+      ) : null}
+      <SearchField value={search} onChange={onSearchChange} />
+    </div>
+  );
+}
+
+function SearchField({
+  value,
+  onChange,
+}: {
+  value: string;
+  onChange: (value: string) => void;
+}) {
+  return (
+    <div className="relative ml-auto w-full sm:w-64">
+      <Search className="pointer-events-none absolute top-1/2 left-2 size-3.5 -translate-y-1/2 text-muted-foreground" />
+      <input
+        type="search"
+        aria-label="Search pull requests"
+        placeholder="Search title, #, repo, branch, author"
+        spellCheck={false}
+        value={value}
+        onChange={(event) => onChange(event.target.value)}
+        onKeyDown={(event) => {
+          if (event.key === "Escape") onChange("");
+        }}
+        className="h-7 w-full rounded-lg border border-input bg-background pr-7 pl-7 text-xs outline-none placeholder:text-muted-foreground focus-visible:border-ring focus-visible:ring-3 focus-visible:ring-ring/50 [&::-webkit-search-cancel-button]:hidden"
+      />
+      {value ? (
+        <button
+          type="button"
+          aria-label="Clear search"
+          onClick={() => onChange("")}
+          className="absolute top-1/2 right-1.5 -translate-y-1/2 rounded p-0.5 text-muted-foreground hover:text-foreground"
+        >
+          <X className="size-3.5" />
+        </button>
       ) : null}
     </div>
   );

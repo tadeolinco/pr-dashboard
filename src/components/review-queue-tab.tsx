@@ -6,6 +6,7 @@ import { getCachedDocsIndex, getCachedReviewQueue } from "@/lib/dashboard-data";
 import { enrichPullRequestsWithDocs } from "@/lib/docs-index";
 import {
   filterPullRequests,
+  searchPullRequests,
   withoutLocalSessionFilters,
   type DashboardFilters,
 } from "@/lib/filters";
@@ -16,10 +17,15 @@ import { useEffect, useState } from "react";
 export function ReviewQueueTab({
   reviewQueue,
   filters,
+  search,
+  onSearchChange,
 }: {
   /** From `useReviewQueue`, loaded by the dashboard so the tab can show a count. */
   reviewQueue: PullRequest[] | null;
   filters: DashboardFilters;
+  /** Held by the dashboard so it survives switching tabs. */
+  search: string;
+  onSearchChange: (search: string) => void;
 }) {
   const { config } = useApp();
 
@@ -27,13 +33,14 @@ export function ReviewQueueTab({
     return <ReviewQueueTabFallback />;
   }
 
+  const searched = searchPullRequests(reviewQueue, search);
   const scoped = filters.repo
-    ? reviewQueue.filter((pr) => pr.repository.nameWithOwner === filters.repo)
-    : reviewQueue;
+    ? searched.filter((pr) => pr.repository.nameWithOwner === filters.repo)
+    : searched;
   const tableFilters = config.localDocsIntegration
     ? filters
     : withoutLocalSessionFilters(filters);
-  const visible = filterPullRequests(reviewQueue, tableFilters);
+  const visible = filterPullRequests(searched, tableFilters);
 
   return (
     <>
@@ -41,9 +48,17 @@ export function ReviewQueueTab({
         pullRequests={scoped}
         filters={filters}
         showLocalSessionFilters={config.localDocsIntegration}
+        search={search}
+        onSearchChange={onSearchChange}
       />
       {visible.length === 0 ? (
-        <EmptyFilter message="Nothing waiting on your review" />
+        <EmptyFilter
+          message={
+            search.trim()
+              ? "No pull requests match"
+              : "Nothing waiting on your review"
+          }
+        />
       ) : (
         <div className="min-h-0 flex-1 overflow-auto rounded-lg ring-1 ring-foreground/10">
           <PrTableWithChecks

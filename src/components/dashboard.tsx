@@ -5,11 +5,13 @@ import { StatusFilters } from "@/components/status-filters";
 import { useApp } from "@/lib/app-context";
 import {
   filterPullRequests,
+  searchPullRequests,
   withoutLocalSessionFilters,
   type DashboardFilters,
 } from "@/lib/filters";
 import type { DashboardData } from "@/lib/types";
 import { GitPullRequest } from "lucide-react";
+import { useState } from "react";
 
 export function Dashboard({
   data,
@@ -19,15 +21,17 @@ export function Dashboard({
   filters: DashboardFilters;
 }) {
   const { config } = useApp();
+  // One search per tab, kept here so it survives switching tabs.
+  const [myPrsSearch, setMyPrsSearch] = useState("");
+  const [reviewQueueSearch, setReviewQueueSearch] = useState("");
+  const searched = searchPullRequests(data.pullRequests, myPrsSearch);
   const tableFilters = config.localDocsIntegration
     ? filters
     : withoutLocalSessionFilters(filters);
   const scoped = filters.repo
-    ? data.pullRequests.filter(
-        (pr) => pr.repository.nameWithOwner === filters.repo,
-      )
-    : data.pullRequests;
-  const visible = filterPullRequests(data.pullRequests, tableFilters);
+    ? searched.filter((pr) => pr.repository.nameWithOwner === filters.repo)
+    : searched;
+  const visible = filterPullRequests(searched, tableFilters);
   const reviewQueue = useReviewQueue(data.viewer.login);
 
   return (
@@ -42,6 +46,8 @@ export function Dashboard({
               pullRequests={scoped}
               filters={filters}
               showLocalSessionFilters={config.localDocsIntegration}
+              search={myPrsSearch}
+              onSearchChange={setMyPrsSearch}
             />
             {visible.length === 0 ? (
               <EmptyFilter message="No pull requests match" />
@@ -53,7 +59,12 @@ export function Dashboard({
           </>
         }
         myReviewQueue={
-          <ReviewQueueTab reviewQueue={reviewQueue} filters={filters} />
+          <ReviewQueueTab
+            reviewQueue={reviewQueue}
+            filters={filters}
+            search={reviewQueueSearch}
+            onSearchChange={setReviewQueueSearch}
+          />
         }
       />
     </div>

@@ -100,6 +100,27 @@ export function filterPullRequests(prs: PullRequest[], filters: DashboardFilters
   });
 }
 
+/**
+ * Free-text search over title, number, repo, branch and author. Every
+ * whitespace-separated term must match somewhere.
+ */
+export function searchPullRequests(prs: PullRequest[], query: string) {
+  const terms = query.toLowerCase().split(/\s+/).filter(Boolean);
+  if (terms.length === 0) return prs;
+  return prs.filter((pr) => {
+    const haystack = [
+      pr.title,
+      `#${pr.number}`,
+      pr.repository.nameWithOwner,
+      pr.headRefName,
+      pr.authorLogin,
+    ]
+      .join(" ")
+      .toLowerCase();
+    return terms.every((term) => haystack.includes(term));
+  });
+}
+
 function first(value: string | string[] | undefined) {
   if (Array.isArray(value)) return value[0];
   return value;
