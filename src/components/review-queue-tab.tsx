@@ -14,58 +14,14 @@ import { GitPullRequest } from "lucide-react";
 import { useEffect, useState } from "react";
 
 export function ReviewQueueTab({
-  viewerLogin,
+  reviewQueue,
   filters,
 }: {
-  viewerLogin: string;
+  /** From `useReviewQueue`, loaded by the dashboard so the tab can show a count. */
+  reviewQueue: PullRequest[] | null;
   filters: DashboardFilters;
 }) {
-  const { config, refreshGeneration, silentRefresh } = useApp();
-  const [reviewQueue, setReviewQueue] = useState<PullRequest[] | null>(null);
-
-  useEffect(() => {
-    let cancelled = false;
-    // Background refreshes swap the list in place instead of showing the skeleton.
-    if (!silentRefresh) setReviewQueue(null);
-
-    void (async () => {
-      const token = config.githubToken;
-      if (!token) {
-        if (!cancelled) setReviewQueue([]);
-        return;
-      }
-
-      try {
-        const queue = await getCachedReviewQueue(
-          token,
-          viewerLogin,
-          config.scope,
-        );
-        const docsRoot = config.docsFolder.handle;
-        if (config.localDocsIntegration && docsRoot) {
-          const docsIndex = await getCachedDocsIndex(docsRoot);
-          enrichPullRequestsWithDocs(queue, docsIndex);
-        }
-        if (!cancelled) setReviewQueue(queue);
-      } catch {
-        if (cancelled) return;
-        setReviewQueue((current) => (silentRefresh && current ? current : []));
-      }
-    })();
-
-    return () => {
-      cancelled = true;
-    };
-    // silentRefresh only describes the generation; it never triggers a load on its own.
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [
-    config.docsFolder.handle,
-    config.githubToken,
-    config.scope,
-    config.localDocsIntegration,
-    refreshGeneration,
-    viewerLogin,
-  ]);
+  const { config } = useApp();
 
   if (reviewQueue === null) {
     return <ReviewQueueTabFallback />;
@@ -120,4 +76,56 @@ function EmptyFilter({ message }: { message: string }) {
       <p className="text-sm font-medium">{message}</p>
     </div>
   );
+}
+
+/** PRs waiting on the viewer's review; null while the first load runs. */
+export function useReviewQueue(viewerLogin: string): PullRequest[] | null {
+  const { config, refreshGeneration, silentRefresh } = useApp();
+  const [reviewQueue, setReviewQueue] = useState<PullRequest[] | null>(null);
+
+  useEffect(() => {
+    let cancelled = false;
+    // Background refreshes swap the list in place instead of showing the skeleton.
+    if (!silentRefresh) setReviewQueue(null);
+
+    void (async () => {
+      const token = config.githubToken;
+      if (!token) {
+        if (!cancelled) setReviewQueue([]);
+        return;
+      }
+
+      try {
+        const queue = await getCachedReviewQueue(
+          token,
+          viewerLogin,
+          config.scope,
+        );
+        const docsRoot = config.docsFolder.handle;
+        if (config.localDocsIntegration && docsRoot) {
+          const docsIndex = await getCachedDocsIndex(docsRoot);
+          enrichPullRequestsWithDocs(queue, docsIndex);
+        }
+        if (!cancelled) setReviewQueue(queue);
+      } catch {
+        if (cancelled) return;
+        setReviewQueue((current) => (silentRefresh && current ? current : []));
+      }
+    })();
+
+    return () => {
+      cancelled = true;
+    };
+    // silentRefresh only describes the generation; it never triggers a load on its own.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [
+    config.docsFolder.handle,
+    config.githubToken,
+    config.scope,
+    config.localDocsIntegration,
+    refreshGeneration,
+    viewerLogin,
+  ]);
+
+  return reviewQueue;
 }

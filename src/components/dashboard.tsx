@@ -1,6 +1,6 @@
 import { DashboardTabs } from "@/components/dashboard-tabs";
 import { PrTableWithChecks } from "@/components/pr-table-with-checks";
-import { ReviewQueueTab } from "@/components/review-queue-tab";
+import { ReviewQueueTab, useReviewQueue } from "@/components/review-queue-tab";
 import { StatusFilters } from "@/components/status-filters";
 import { useApp } from "@/lib/app-context";
 import {
@@ -28,11 +28,14 @@ export function Dashboard({
       )
     : data.pullRequests;
   const visible = filterPullRequests(data.pullRequests, tableFilters);
+  const reviewQueue = useReviewQueue(data.viewer.login);
 
   return (
     <div className="mx-auto flex min-h-0 w-full max-w-[1600px] flex-1 flex-col px-4 py-4 lg:px-6">
       <DashboardTabs
         filters={filters}
+        myPrsCount={data.pullRequests.length}
+        myReviewQueueCount={reviewQueue?.length ?? null}
         myPrs={
           <>
             <StatusFilters
@@ -50,7 +53,7 @@ export function Dashboard({
           </>
         }
         myReviewQueue={
-          <ReviewQueueTab viewerLogin={data.viewer.login} filters={filters} />
+          <ReviewQueueTab reviewQueue={reviewQueue} filters={filters} />
         }
       />
     </div>
