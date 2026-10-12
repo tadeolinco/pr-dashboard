@@ -34,7 +34,8 @@ import {
   writeSuggestedScope,
 } from "@/lib/setup-link";
 import type { DashboardData } from "@/lib/types";
-import { useCallback, useEffect, useMemo, useState } from "react";
+import { useBackgroundRefresh } from "@/lib/use-background-refresh";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 
 const EMPTY_CONFIG: AppConfig = {
   githubToken: null,
@@ -91,6 +92,9 @@ function AppShell() {
     initial.setupNotice,
   );
   const [refreshGeneration, setRefreshGeneration] = useState(0);
+  // Whether the latest generation came from a background refresh: no skeletons, keep old data on failure.
+  const [silentRefresh, setSilentRefresh] = useState(false);
+  const [backgroundRefreshing, setBackgroundRefreshing] = useState(false);
   const [data, setData] = useState<DashboardData | null>(null);
   const [error, setError] = useState<Error | null>(null);
   const [loading, setLoading] = useState(true);
@@ -101,8 +105,18 @@ function AppShell() {
 
   const refresh = useCallback(() => {
     invalidateDashboardCaches();
+    setSilentRefresh(false);
     setRefreshGeneration((generation) => generation + 1);
   }, []);
+
+  const backgroundRefresh = useCallback(() => {
+    invalidateDashboardCaches();
+    setSilentRefresh(true);
+    setRefreshGeneration((generation) => generation + 1);
+  }, []);
+
+  const lastLoadedAt = useRef<number | null>(null);
+  const inFlight = useRef(false);
 
   const setPreferences = useCallback(
     (update: Partial<AppPreferences>) => {
@@ -118,9 +132,14 @@ function AppShell() {
 
   useEffect(() => {
     let cancelled = false;
-    setLoading(true);
-    setError(null);
-    setNeedsSetup(false);
+    const silent = silentRefresh;
+    inFlight.current = true;
+    setBackgroundRefreshing(silent);
+    if (!silent) {
+      setLoading(true);
+      setError(null);
+      setNeedsSetup(false);
+    }
 
     void (async () => {
       try {
@@ -143,8 +162,12 @@ function AppShell() {
         );
         if (cancelled) return;
         setData(dashboard);
+        setError(null);
+        lastLoadedAt.current = Date.now();
       } catch (caught) {
         if (cancelled) return;
+        // A failed background refresh keeps what is on screen; the next one retries.
+        if (silent) return;
         if (caught instanceof MissingGithubTokenError) {
           setNeedsSetup(true);
           setData(null);
@@ -153,13 +176,19 @@ function AppShell() {
         setError(caught instanceof Error ? caught : new Error(String(caught)));
         setData(null);
       } finally {
-        if (!cancelled) setLoading(false);
+        if (!cancelled) {
+          inFlight.current = false;
+          setBackgroundRefreshing(false);
+          setLoading(false);
+        }
       }
     })();
 
     return () => {
       cancelled = true;
     };
+    // silentRefresh only describes the generation; it never triggers a load on its own.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [refreshGeneration]);
 
   const appValue = useMemo(
@@ -169,12 +198,30 @@ function AppShell() {
       setPreferences,
       refresh,
       refreshGeneration,
+      silentRefresh,
+      backgroundRefreshing,
       openPage,
     }),
-    [config, preferences, setPreferences, refresh, refreshGeneration, openPage],
+    [
+      config,
+      preferences,
+      setPreferences,
+      refresh,
+      refreshGeneration,
+      silentRefresh,
+      backgroundRefreshing,
+      openPage,
+    ],
   );
 
   const token = config.githubToken;
+  useBackgroundRefresh({
+    enabled: Boolean(data) && !error && page === null,
+    lastLoadedAt,
+    inFlight,
+    onRefresh: backgroundRefresh,
+  });
+
   // Settings pages replace the dashboard; the orgs picker is forced until a scope exists.
   const activePage: SettingsPage | null =
     loading || needsSetup || token === null

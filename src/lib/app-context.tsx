@@ -12,6 +12,10 @@ export type AppContextValue = {
   setPreferences: (update: Partial<AppPreferences>) => void;
   refresh: () => void;
   refreshGeneration: number;
+  /** True when `refreshGeneration` was bumped by a background refresh: update in place, no loaders. */
+  silentRefresh: boolean;
+  /** A background refresh is loading; the header shows a dot instead of a skeleton. */
+  backgroundRefreshing: boolean;
   /** Replaces the dashboard with a settings page until it is saved or cancelled. */
   openPage: (page: SettingsPage) => void;
 };

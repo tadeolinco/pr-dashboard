@@ -20,12 +20,13 @@ export function ReviewQueueTab({
   viewerLogin: string;
   filters: DashboardFilters;
 }) {
-  const { config, refreshGeneration } = useApp();
+  const { config, refreshGeneration, silentRefresh } = useApp();
   const [reviewQueue, setReviewQueue] = useState<PullRequest[] | null>(null);
 
   useEffect(() => {
     let cancelled = false;
-    setReviewQueue(null);
+    // Background refreshes swap the list in place instead of showing the skeleton.
+    if (!silentRefresh) setReviewQueue(null);
 
     void (async () => {
       const token = config.githubToken;
@@ -47,13 +48,16 @@ export function ReviewQueueTab({
         }
         if (!cancelled) setReviewQueue(queue);
       } catch {
-        if (!cancelled) setReviewQueue([]);
+        if (cancelled) return;
+        setReviewQueue((current) => (silentRefresh && current ? current : []));
       }
     })();
 
     return () => {
       cancelled = true;
     };
+    // silentRefresh only describes the generation; it never triggers a load on its own.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [
     config.docsFolder.handle,
     config.githubToken,

@@ -33,6 +33,10 @@ export function PrTableWithChecks({
     DevelopmentSyncStatus
   > | null>(null);
   const [developmentSyncError, setDevelopmentSyncError] = useState(false);
+  // Statuses from the previous fetch stay on screen while a new one runs (e.g. a
+  // background refresh); only PRs missing from them show as loading.
+  const [checksPending, setChecksPending] = useState(false);
+  const [developmentSyncPending, setDevelopmentSyncPending] = useState(false);
   const { config } = useApp();
   const token = config.githubToken;
 
@@ -40,35 +44,40 @@ export function PrTableWithChecks({
     if (pullRequests.length === 0) {
       setCheckStatuses({});
       setDevelopmentSyncStatuses({});
+      setChecksPending(false);
+      setDevelopmentSyncPending(false);
       return;
     }
-
-    let cancelled = false;
-    setCheckStatuses(null);
-    setCheckError(false);
-    setDevelopmentSyncStatuses(null);
-    setDevelopmentSyncError(false);
 
     if (!token) {
       setCheckError(true);
       setCheckStatuses({});
       setDevelopmentSyncError(true);
       setDevelopmentSyncStatuses({});
+      setChecksPending(false);
+      setDevelopmentSyncPending(false);
       return;
     }
+
+    let cancelled = false;
+    setChecksPending(true);
+    setDevelopmentSyncPending(true);
 
     void fetchCheckStatuses(
       token,
       pullRequests.map((pr) => pr.id),
     )
       .then((statuses) => {
-        if (!cancelled) setCheckStatuses(statuses);
+        if (cancelled) return;
+        setCheckStatuses(statuses);
+        setCheckError(false);
+        setChecksPending(false);
       })
       .catch(() => {
-        if (!cancelled) {
-          setCheckError(true);
-          setCheckStatuses({});
-        }
+        if (cancelled) return;
+        setCheckError(true);
+        setCheckStatuses((current) => current ?? {});
+        setChecksPending(false);
       });
 
     void fetchDevelopmentSyncStatuses(
@@ -83,13 +92,16 @@ export function PrTableWithChecks({
       })),
     )
       .then((statuses) => {
-        if (!cancelled) setDevelopmentSyncStatuses(statuses);
+        if (cancelled) return;
+        setDevelopmentSyncStatuses(statuses);
+        setDevelopmentSyncError(false);
+        setDevelopmentSyncPending(false);
       })
       .catch(() => {
-        if (!cancelled) {
-          setDevelopmentSyncError(true);
-          setDevelopmentSyncStatuses({});
-        }
+        if (cancelled) return;
+        setDevelopmentSyncError(true);
+        setDevelopmentSyncStatuses((current) => current ?? {});
+        setDevelopmentSyncPending(false);
       });
 
     return () => {
@@ -112,11 +124,24 @@ export function PrTableWithChecks({
     <PrTable
       pullRequests={merged}
       filters={filters}
-      checksLoading={checkStatuses === null}
+      checksLoading={isLoading(checkStatuses, checksPending, pullRequests)}
       checksFailed={checkError}
-      developmentSyncLoading={developmentSyncStatuses === null}
+      developmentSyncLoading={isLoading(
+        developmentSyncStatuses,
+        developmentSyncPending,
+        pullRequests,
+      )}
       developmentSyncFailed={developmentSyncError}
       hideReviewers={hideReviewers}
     />
   );
+}
+
+function isLoading(
+  statuses: Record<string, unknown> | null,
+  pending: boolean,
+  pullRequests: PullRequest[],
+) {
+  if (statuses === null) return true;
+  return pending && pullRequests.some((pr) => !(pr.id in statuses));
 }
