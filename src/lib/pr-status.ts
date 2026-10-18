@@ -70,7 +70,18 @@ export function deriveReviewStatus(pr: ReviewSnapshot): ReviewStatus {
   const states = new Set(humanReviews.map((review) => review.state));
   const pendingReviewers = getPendingReviewerLogins(pr);
 
-  if (states.has("CHANGES_REQUESTED") || pr.reviewDecision === "CHANGES_REQUESTED") {
+  // GitHub keeps the changes-requested review (and reviewDecision) after the
+  // author re-requests review, so only count reviewers without an open request.
+  const changesRequestedBy = humanReviews.filter(
+    (review) => review.state === "CHANGES_REQUESTED",
+  );
+  const openChangesRequested = changesRequestedBy.some(
+    (review) => !pendingReviewers.has(review.login),
+  );
+  const decisionChangesRequested =
+    pr.reviewDecision === "CHANGES_REQUESTED" && changesRequestedBy.length === 0;
+
+  if (openChangesRequested || decisionChangesRequested) {
     return "changes_requested";
   }
   if (pr.reviewDecision === "APPROVED") {
