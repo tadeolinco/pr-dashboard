@@ -76,6 +76,17 @@ const PULL_REQUEST_FIELDS = `
       }
     }
   }
+  latestOpinionatedReviews(first: 20) {
+    nodes {
+      state
+      author {
+        __typename
+        login
+        ... on User { avatarUrl }
+        ... on Bot { avatarUrl }
+      }
+    }
+  }
   commits(last: 1) {
     nodes {
       commit {
@@ -141,6 +152,12 @@ type GraphqlPullRequest = {
     nodes: Array<{ requestedReviewer: GraphqlActor | null }>;
   };
   latestReviews: {
+    nodes: Array<{
+      state: string;
+      author: GraphqlActor | null;
+    }>;
+  };
+  latestOpinionatedReviews: {
     nodes: Array<{
       state: string;
       author: GraphqlActor | null;
@@ -286,7 +303,19 @@ function mapPullRequest(node: GraphqlPullRequest): PullRequest {
     }
   }
 
-  const reviews = node.latestReviews.nodes.flatMap((review) => {
+  // latestReviews drops a reviewer's changes-requested review once the author
+  // re-requests them, while reviewDecision stays CHANGES_REQUESTED. Merge in
+  // latestOpinionatedReviews so that review is still matched to the open request.
+  const reviewedLogins = new Set(
+    node.latestReviews.nodes.map((review) => review.author?.login),
+  );
+  const reviewNodes = [
+    ...node.latestReviews.nodes,
+    ...node.latestOpinionatedReviews.nodes.filter(
+      (review) => !reviewedLogins.has(review.author?.login),
+    ),
+  ];
+  const reviews = reviewNodes.flatMap((review) => {
     if (!review.author?.login) return [];
     return [
       {
