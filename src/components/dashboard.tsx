@@ -45,7 +45,6 @@ export function Dashboard({
             <StatusFilters
               pullRequests={scoped}
               filters={filters}
-              showLocalSessionFilters={config.localDocsIntegration}
               search={myPrsSearch}
               onSearchChange={setMyPrsSearch}
             />

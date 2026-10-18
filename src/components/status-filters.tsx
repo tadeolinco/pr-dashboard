@@ -3,39 +3,35 @@ import { formatCount } from "@/lib/format";
 import { AppLink } from "@/lib/navigation";
 import { countMultiLinkedPullRequests } from "@/lib/pr-links";
 import { STATUS_LABELS } from "@/lib/pr-status";
-import {
-  isNotCleanReview,
-  isStaleReview,
-} from "@/lib/review-session/pr-health";
-import type { PullRequest } from "@/lib/types";
+import type { PullRequest, ReviewStatus } from "@/lib/types";
 import { cn } from "@/lib/utils";
 import { Search, X } from "lucide-react";
 import { useEffect, useRef } from "react";
 
+const STATUS_CHIPS: ReviewStatus[] = [
+  "awaiting_reviewer",
+  "review_requested",
+  "commented",
+  "changes_requested",
+];
+
 export function StatusFilters({
   pullRequests,
   filters,
-  showLocalSessionFilters = true,
   search,
   onSearchChange,
 }: {
   pullRequests: PullRequest[];
   filters: DashboardFilters;
-  showLocalSessionFilters?: boolean;
   search: string;
   onSearchChange: (search: string) => void;
 }) {
-  const needsReviewerActive = filters.status === "awaiting_reviewer";
-  const staleActive = filters.review === "stale";
-  const notCleanActive = filters.review === "not-clean";
   const groupLinkedActive = filters.group === "linked";
   const linkedPrCount = countMultiLinkedPullRequests(pullRequests);
   const allActive =
-    !needsReviewerActive &&
-    !staleActive &&
-    !notCleanActive &&
     !groupLinkedActive &&
     !filters.session &&
+    !filters.review &&
     (!filters.status || filters.status === "all");
 
   return (
@@ -61,45 +57,23 @@ export function StatusFilters({
         label="Group linked"
         count={linkedPrCount}
       />
-      <FilterChip
-        href={dashboardHref({
-          ...filters,
-          status: needsReviewerActive ? "all" : "awaiting_reviewer",
-          session: undefined,
-          review: undefined,
-        })}
-        active={needsReviewerActive}
-        label={STATUS_LABELS.awaiting_reviewer}
-        count={
-          pullRequests.filter((pr) => pr.status === "awaiting_reviewer").length
-        }
-      />
-      {showLocalSessionFilters ? (
-        <>
+      {STATUS_CHIPS.map((status) => {
+        const active = filters.status === status;
+        return (
           <FilterChip
+            key={status}
             href={dashboardHref({
               ...filters,
-              status: notCleanActive ? filters.status : "all",
+              status: active ? "all" : status,
               session: undefined,
-              review: notCleanActive ? undefined : "not-clean",
+              review: undefined,
             })}
-            active={notCleanActive}
-            label="Not clean"
-            count={pullRequests.filter(isNotCleanReview).length}
+            active={active}
+            label={STATUS_LABELS[status]}
+            count={pullRequests.filter((pr) => pr.status === status).length}
           />
-          <FilterChip
-            href={dashboardHref({
-              ...filters,
-              status: staleActive ? filters.status : "all",
-              session: undefined,
-              review: staleActive ? undefined : "stale",
-            })}
-            active={staleActive}
-            label="Stale"
-            count={pullRequests.filter(isStaleReview).length}
-          />
-        </>
-      ) : null}
+        );
+      })}
       <SearchField value={search} onChange={onSearchChange} />
     </div>
   );

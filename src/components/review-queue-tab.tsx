@@ -47,7 +47,6 @@ export function ReviewQueueTab({
       <StatusFilters
         pullRequests={scoped}
         filters={filters}
-        showLocalSessionFilters={config.localDocsIntegration}
         search={search}
         onSearchChange={onSearchChange}
       />
