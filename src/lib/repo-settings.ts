@@ -17,6 +17,8 @@ export type RepoSettings = {
   integrationBranch?: string;
   /** Badge colour as #rrggbb; a palette colour is assigned when unset. */
   color?: string;
+  /** Base branches whose PRs don't count toward Pending reviews' 7-day review load. */
+  loadIgnoredBranches?: string[];
 };
 
 /** Only when GitHub reports no default branch (e.g. an empty repo). */
@@ -119,6 +121,17 @@ export function integrationBranchForRepository(repositoryName: string): string {
   );
 }
 
+/** True when reviews on PRs into `baseRefName` shouldn't count as review load. */
+export function isLoadIgnoredBranch(
+  repositoryName: string,
+  baseRefName: string,
+): boolean {
+  return (
+    settingsForRepo(repositoryName)?.loadIgnoredBranches?.includes(baseRefName) ??
+    false
+  );
+}
+
 /** Colour picked on the Repo settings page, if any. */
 export function colorForRepository(repositoryName: string): string | null {
   return settingsForRepo(repositoryName)?.color ?? null;
@@ -143,6 +156,15 @@ export function parseBranchName(value: unknown): string | undefined {
   if (typeof value !== "string") return undefined;
   const trimmed = value.trim();
   return BRANCH.test(trimmed) ? trimmed : undefined;
+}
+
+/** Comma- or newline-separated branch names → validated, de-duplicated list. */
+export function parseBranchList(input: string): string[] {
+  return [
+    ...new Set(
+      input.split(/[\n,]/).flatMap((name) => parseBranchName(name) ?? []),
+    ),
+  ];
 }
 
 export function isValidRepoName(repo: string) {
@@ -187,12 +209,20 @@ export function parseRepoSettings(value: unknown): RepoSettings[] {
     const targetBranch = parseBranchName(entry.targetBranch);
     const integrationBranch = parseBranchName(entry.integrationBranch);
     const color = parseColor(entry.color);
+    const loadIgnoredBranches = Array.isArray(entry.loadIgnoredBranches)
+      ? parseBranchList(
+          entry.loadIgnoredBranches
+            .filter((name): name is string => typeof name === "string")
+            .join("\n"),
+        )
+      : [];
     if (
       names.length === 0 &&
       ignoredPaths.length === 0 &&
       !targetBranch &&
       !integrationBranch &&
-      !color
+      !color &&
+      loadIgnoredBranches.length === 0
     ) {
       return [];
     }
@@ -204,6 +234,7 @@ export function parseRepoSettings(value: unknown): RepoSettings[] {
         ...(targetBranch ? { targetBranch } : {}),
         ...(integrationBranch ? { integrationBranch } : {}),
         ...(color ? { color } : {}),
+        ...(loadIgnoredBranches.length > 0 ? { loadIgnoredBranches } : {}),
       },
     ];
   });

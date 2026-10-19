@@ -5,6 +5,7 @@ import {
   DEFAULT_INTEGRATION_BRANCH,
   isValidRepoName,
   parseAliasNames,
+  parseBranchList,
   parseBranchName,
   parseColor,
   twoLetterRepoLabel,
@@ -19,6 +20,7 @@ type DraftRow = {
   ignoredPaths: string;
   targetBranch: string;
   integrationBranch: string;
+  loadIgnoredBranches: string;
   /** Empty means the palette default. */
   color: string;
 };
@@ -28,6 +30,7 @@ const EMPTY_FIELDS = {
   ignoredPaths: "",
   targetBranch: "",
   integrationBranch: "",
+  loadIgnoredBranches: "",
   color: "",
 };
 
@@ -46,6 +49,7 @@ function initialRows(settings: RepoSettings[], knownRepos: string[]): DraftRow[]
     ignoredPaths: entry.ignoredPaths.join("\n"),
     targetBranch: entry.targetBranch ?? "",
     integrationBranch: entry.integrationBranch ?? "",
+    loadIgnoredBranches: (entry.loadIgnoredBranches ?? []).join(", "),
     color: entry.color ?? "",
   }));
   const seen = new Set(rows.map((row) => repoName(row.repo)));
@@ -64,12 +68,14 @@ function toSettings(rows: DraftRow[]): RepoSettings[] {
     const targetBranch = parseBranchName(row.targetBranch);
     const integrationBranch = parseBranchName(row.integrationBranch);
     const color = parseColor(row.color);
+    const loadIgnoredBranches = parseBranchList(row.loadIgnoredBranches);
     if (
       names.length === 0 &&
       ignoredPaths.length === 0 &&
       !targetBranch &&
       !integrationBranch &&
-      !color
+      !color &&
+      loadIgnoredBranches.length === 0
     ) {
       return [];
     }
@@ -81,6 +87,7 @@ function toSettings(rows: DraftRow[]): RepoSettings[] {
         ...(targetBranch ? { targetBranch } : {}),
         ...(integrationBranch ? { integrationBranch } : {}),
         ...(color ? { color } : {}),
+        ...(loadIgnoredBranches.length > 0 ? { loadIgnoredBranches } : {}),
       },
     ];
   });
@@ -159,6 +166,15 @@ export function RepoSettingsPage({
             </dd>
           </div>
           <div>
+            <dt className="font-medium text-foreground">Not counted as review load</dt>
+            <dd className="mt-0.5 leading-snug">
+              Reviews on PRs into these branches don&apos;t count toward
+              Pending reviews&apos; 7-day review load, e.g.{" "}
+              <code className="text-[11px]">production</code> for release PRs.
+              Comma-separated.
+            </dd>
+          </div>
+          <div>
             <dt className="font-medium text-foreground">Excluded from diff counts</dt>
             <dd className="mt-0.5 leading-snug">
               Files matching these globs don&apos;t count toward line and file
@@ -226,6 +242,19 @@ export function RepoSettingsPage({
                   />
                 </Field>
               </div>
+              <Field label="Not counted as review load">
+                <input
+                  aria-label={`Branches not counted as review load for ${row.repo}`}
+                  placeholder="e.g. production"
+                  spellCheck={false}
+                  autoComplete="off"
+                  value={row.loadIgnoredBranches}
+                  onChange={(event) =>
+                    update(index, { loadIgnoredBranches: event.target.value })
+                  }
+                  className={`${fieldClassName} h-8`}
+                />
+              </Field>
               <Field label="Excluded from diff counts">
                 <textarea
                   aria-label={`Excluded paths for ${row.repo}`}

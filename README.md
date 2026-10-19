@@ -21,6 +21,7 @@ Open **Settings**, paste a token with the `repo` scope (`gh auth token` works if
   - **Badge colour**: picked, or a non-repeating palette default.
   - **Target branch**: the branch PRs ultimately merge into (default: the repo's GitHub default branch). Pending reviews and To review only count PRs aimed at it, directly or through a stack.
   - **Integration branch**: where work lands before release (default `development`). My PRs shows whether each PR's latest commit is already there.
+  - **Not counted as review load**: base branches (e.g. `production`) whose PRs are left out of Pending reviews' 7-day review load, so approving release PRs doesn't count as reviewing.
   - **Excluded from diff counts**: globs such as `**/translations.*.json` or `*.lock`, left out of line and file totals.
 - **Bot accounts**: logins whose reviews don't count as human reviews. Ships with a list of common review, CI and dependency bots; GitHub app accounts and `[bot]` / `-bot` / `_bot` logins always count.
 

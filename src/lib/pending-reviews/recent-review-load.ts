@@ -10,6 +10,7 @@ import type {
     PendingReviewsReviewer,
 } from "@/lib/pending-reviews/types";
 import { isBotActor } from "@/lib/bots";
+import { isLoadIgnoredBranch } from "@/lib/repo-settings";
 
 const SEARCH_PAGE_SIZE = 50;
 const REPO_SEARCH_CONCURRENCY = 6;
@@ -35,6 +36,7 @@ query($q: String!, $cursor: String) {
         additions
         deletions
         changedFiles
+        baseRefName
         author { login avatarUrl }
         repository { nameWithOwner }
         reviews(last: ${PR_REVIEWS_LAST}) {
@@ -57,6 +59,7 @@ type SearchPrNode = {
   additions: number;
   deletions: number;
   changedFiles: number;
+  baseRefName: string;
   author?: { login?: string | null; avatarUrl?: string | null } | null;
   repository: { nameWithOwner: string };
   reviews: {
@@ -104,7 +107,10 @@ function loginMatches(a: string | undefined | null, b: string) {
   return Boolean(a && a.toLowerCase() === b.toLowerCase());
 }
 
-/** At most one row per PR; excludes reviewing your own PR. */
+/**
+ * At most one row per PR; excludes reviewing your own PR and PRs into a
+ * branch the repo's settings leave out of review load (e.g. release PRs).
+ */
 async function reviewFromPrForLogin(
   token: string,
   pr: SearchPrNode,
@@ -115,6 +121,8 @@ async function reviewFromPrForLogin(
 ): Promise<PendingReviewsRecentReview | null> {
   if (!repoInOrg(pr.repository.nameWithOwner, org)) return null;
   if (loginMatches(pr.author?.login, login)) return null;
+  const repoName = pr.repository.nameWithOwner.split("/", 2)[1] ?? "";
+  if (isLoadIgnoredBranch(repoName, pr.baseRefName)) return null;
 
   let latestMs: number | undefined;
   let latestSubmittedAt: string | undefined;
@@ -138,7 +146,7 @@ async function reviewFromPrForLogin(
 
   if (!latestSubmittedAt) return null;
 
-  const [owner, repoName] = pr.repository.nameWithOwner.split("/", 2);
+  const owner = pr.repository.nameWithOwner.split("/", 2)[0];
   const lineStats = await adjustPrLineStats(
     token,
     repoName,
