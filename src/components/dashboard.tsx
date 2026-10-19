@@ -49,6 +49,7 @@ export function Dashboard({
           <>
             <StatusFilters
               pullRequests={scoped}
+              mergedPullRequests={data.linkedMergedPullRequests}
               filters={filters}
               search={myPrsSearch}
               onSearchChange={setMyPrsSearch}

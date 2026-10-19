@@ -1,6 +1,7 @@
 import {
   dashboardHref,
   linkedGroupIdsWithStatus,
+  linkedMergedPullRequests,
   type DashboardFilters,
 } from "@/lib/filters";
 import { formatCount } from "@/lib/format";
@@ -22,11 +23,14 @@ const STATUS_CHIPS: ReviewStatus[] = [
 
 export function StatusFilters({
   pullRequests,
+  mergedPullRequests,
   filters,
   search,
   onSearchChange,
 }: {
   pullRequests: PullRequest[];
+  /** Merged PRs linked from `pullRequests`; the Show merged chip needs them. */
+  mergedPullRequests?: PullRequest[];
   filters: DashboardFilters;
   search: string;
   onSearchChange: (search: string) => void;
@@ -62,6 +66,16 @@ export function StatusFilters({
         label="Group linked"
         count={linkedPrCount}
       />
+      {mergedPullRequests ? (
+        <FilterChip
+          href={dashboardHref({ ...filters, merged: !filters.merged })}
+          active={Boolean(filters.merged)}
+          label="Show merged"
+          count={
+            linkedMergedPullRequests(pullRequests, mergedPullRequests).length
+          }
+        />
+      ) : null}
       {STATUS_CHIPS.map((status) => {
         const active = filters.status === status;
         const matchingGroups = groupLinkedActive

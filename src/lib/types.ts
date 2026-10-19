@@ -102,7 +102,7 @@ export type RepoGroup = {
 export type DashboardData = {
   viewer: Viewer;
   pullRequests: PullRequest[];
-  /** Merged PRs linked to an open PR, shown only when linked PRs are grouped. */
+  /** Merged PRs linked to an open PR, shown only with Show merged on. */
   linkedMergedPullRequests: PullRequest[];
   repos: RepoGroup[];
 };
