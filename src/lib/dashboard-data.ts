@@ -6,7 +6,7 @@ import {
 import {
     MissingGithubTokenError,
     fetchGithubPullRequests,
-    fetchLinkedMergedPullRequests,
+    fetchLinkedPullRequests,
 } from "@/lib/github";
 import { assignLinkedPullRequestGroups } from "@/lib/pr-links";
 import { fetchMyReviewQueuePullRequests } from "@/lib/review-queue";
@@ -22,7 +22,7 @@ type CacheEntry<T> = { key: string; value: T; expiresAt: number };
 
 type GithubDashboard = Pick<
   DashboardData,
-  "viewer" | "pullRequests" | "linkedMergedPullRequests"
+  "viewer" | "pullRequests" | "linkedMergedPullRequests" | "linkedOpenPullRequests"
 >;
 
 let githubDashboardCache: CacheEntry<GithubDashboard> | null = null;
@@ -48,14 +48,20 @@ export async function getCachedGithubDashboard(
   if (hit) return hit;
 
   const { viewer, pullRequests } = await fetchGithubPullRequests(token, scope);
-  // Merged PRs only fill out linked groups; a failed lookup shouldn't take the
+  // Linked PRs only fill out linked groups; a failed lookup shouldn't take the
   // dashboard down with it.
-  const linkedMergedPullRequests = await fetchLinkedMergedPullRequests(
+  const linked = await fetchLinkedPullRequests(
     token,
     scope,
+    viewer.login,
     pullRequests,
-  ).catch(() => []);
-  const value = { viewer, pullRequests, linkedMergedPullRequests };
+  ).catch(() => ({ merged: [], open: [] }));
+  const value = {
+    viewer,
+    pullRequests,
+    linkedMergedPullRequests: linked.merged,
+    linkedOpenPullRequests: linked.open,
+  };
   githubDashboardCache = {
     key,
     value,
@@ -105,9 +111,17 @@ export async function assembleDashboardData(
   scope: PrScope,
   docsRoot: FileSystemDirectoryHandle | null = null,
 ): Promise<DashboardData> {
-  const { viewer, pullRequests, linkedMergedPullRequests } =
-    await getCachedGithubDashboard(token, scope);
-  assignLinkedPullRequestGroups([...pullRequests, ...linkedMergedPullRequests]);
+  const {
+    viewer,
+    pullRequests,
+    linkedMergedPullRequests,
+    linkedOpenPullRequests,
+  } = await getCachedGithubDashboard(token, scope);
+  assignLinkedPullRequestGroups([
+    ...pullRequests,
+    ...linkedMergedPullRequests,
+    ...linkedOpenPullRequests,
+  ]);
   if (docsRoot) {
     const docsIndex = await getCachedDocsIndex(docsRoot);
     enrichPullRequestsWithDocs(pullRequests, docsIndex);
@@ -117,6 +131,7 @@ export async function assembleDashboardData(
     viewer,
     pullRequests,
     linkedMergedPullRequests,
+    linkedOpenPullRequests,
     repos: groupByRepository(pullRequests),
   };
 }

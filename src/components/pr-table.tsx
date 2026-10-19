@@ -294,13 +294,20 @@ export function PrTable({
                 </AppLink>
               </TableCell>
               <TableCell className="min-w-[12rem] py-1 whitespace-normal">
-                <AppLink
-                  href={pr.url}
-                  title={pr.title}
-                  className="line-clamp-1 font-medium hover:underline"
-                >
-                  {pr.title}
-                </AppLink>
+                <div className="flex min-w-0 items-baseline gap-1.5">
+                  <AppLink
+                    href={pr.url}
+                    title={pr.title}
+                    className="line-clamp-1 font-medium hover:underline"
+                  >
+                    {pr.title}
+                  </AppLink>
+                  {pr.linkedAuthor ? (
+                    <span className="shrink-0 text-xs text-muted-foreground">
+                      @{pr.linkedAuthor}
+                    </span>
+                  ) : null}
+                </div>
               </TableCell>
               <TableCell className="py-1">
                 <StatusBadge status={pr.status} />

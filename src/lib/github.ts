@@ -16,7 +16,7 @@ const PAGE_SIZE = 50;
 const MAX_PRS = 200;
 /** Search spans all of GitHub, so stop paging even if few results were in scope. */
 const MAX_SEARCH_PAGES = 10;
-/** Mentioned PRs looked up per dashboard load to find merged linked PRs. */
+/** Mentioned PRs looked up per dashboard load to find linked PRs. */
 const MAX_LINKED_LOOKUPS = 60;
 const LINKED_LOOKUPS_PER_QUERY = 20;
 
@@ -219,15 +219,17 @@ export async function fetchGithubReviewRequestedPullRequests(
 }
 
 /**
- * Merged PRs mentioned in the open PRs' descriptions (stack tables, related
- * PRs), so a linked group still shows the parts that already landed. Mentions
- * that are issues, closed PRs or out of scope are dropped.
+ * PRs mentioned in the open PRs' descriptions (stack tables, related PRs) that
+ * the authored search didn't return, so a linked group still shows the parts
+ * that already landed and open parts someone else owns. Mentions that are
+ * issues, closed PRs, drafts or out of scope are dropped.
  */
-export async function fetchLinkedMergedPullRequests(
+export async function fetchLinkedPullRequests(
   token: string,
   scope: PrScope,
+  viewerLogin: string,
   openPullRequests: PullRequest[],
-): Promise<PullRequest[]> {
+): Promise<{ merged: PullRequest[]; open: PullRequest[] }> {
   const known = new Set(
     openPullRequests.map((pr) => `${pr.repository.nameWithOwner}#${pr.number}`),
   );
@@ -245,25 +247,29 @@ export async function fetchLinkedMergedPullRequests(
       refs.push({ owner, name, number: ref.number });
     }
   }
-  if (refs.length === 0) return [];
+  if (refs.length === 0) return { merged: [], open: [] };
 
   const merged: PullRequest[] = [];
+  const open: PullRequest[] = [];
   const lookups = refs.slice(0, MAX_LINKED_LOOKUPS);
   for (let start = 0; start < lookups.length; start += LINKED_LOOKUPS_PER_QUERY) {
     const batch = lookups.slice(start, start + LINKED_LOOKUPS_PER_QUERY);
     const nodes = await githubLookupPullRequests(token, batch);
     for (const node of nodes) {
-      if (node.state !== "MERGED") continue;
-      merged.push({
-        ...mapPullRequest(node),
-        status: "merged",
-        mergeStateStatus: null,
-      });
+      const pr = mapPullRequest(node);
+      if (pr.authorLogin && pr.authorLogin !== viewerLogin) {
+        pr.linkedAuthor = pr.authorLogin;
+      }
+      if (node.state === "MERGED") {
+        merged.push({ ...pr, status: "merged", mergeStateStatus: null });
+      } else if (node.state === "OPEN" && !node.isDraft) {
+        open.push(pr);
+      }
     }
   }
 
-  await adjustPullRequestsLineStats(token, merged);
-  return merged;
+  await adjustPullRequestsLineStats(token, [...merged, ...open]);
+  return { merged, open };
 }
 
 async function searchPullRequests(
@@ -470,6 +476,7 @@ function mapPullRequest(node: GraphqlPullRequest): PullRequest {
     reviewDecision: node.reviewDecision,
     authorLogin,
     linkedGroupId: null,
+    linkedAuthor: null,
     status: deriveReviewStatus(mapped),
     sessions: { review: false, triage: false },
     reviewStatus: {

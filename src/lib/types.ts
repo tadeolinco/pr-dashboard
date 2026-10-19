@@ -75,6 +75,8 @@ export type PullRequest = {
   body: string | null;
   /** Group id: shared for linked PRs, unique per solo PR among your open PRs. */
   linkedGroupId: string | null;
+  /** Author of a PR pulled in only because one of yours mentions it, when that isn't you. */
+  linkedAuthor: string | null;
   status: ReviewStatus;
   sessions: {
     review: boolean;
@@ -104,5 +106,7 @@ export type DashboardData = {
   pullRequests: PullRequest[];
   /** Merged PRs linked to an open PR, shown only with Show merged on. */
   linkedMergedPullRequests: PullRequest[];
+  /** Open PRs by someone else linked to one of yours, shown with their group. */
+  linkedOpenPullRequests: PullRequest[];
   repos: RepoGroup[];
 };
