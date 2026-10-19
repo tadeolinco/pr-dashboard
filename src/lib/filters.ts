@@ -129,8 +129,8 @@ export function linkedGroupIdsWithStatus(prs: PullRequest[], status: ReviewStatu
 
 /**
  * Adds the linked PRs whose group has a visible PR of yours: open PRs by
- * someone else always, merged PRs only with Show merged on. Neither shows on
- * its own.
+ * someone else only with Group linked on, merged PRs only with Show merged on.
+ * Neither shows on its own.
  */
 export function withLinkedPullRequests(
   visible: PullRequest[],
@@ -138,7 +138,9 @@ export function withLinkedPullRequests(
   filters: DashboardFilters,
 ) {
   const extra = [
-    ...linkedMergedPullRequests(visible, linked.open),
+    ...(filters.group === "linked"
+      ? linkedMergedPullRequests(visible, linked.open)
+      : []),
     ...(filters.merged ? linkedMergedPullRequests(visible, linked.merged) : []),
   ];
   return extra.length ? [...visible, ...extra] : visible;
