@@ -3,7 +3,9 @@ export type ReviewStatus =
   | "review_requested"
   | "commented"
   | "changes_requested"
-  | "approved";
+  | "approved"
+  /** Only on merged PRs pulled in to complete a linked group; never a filter. */
+  | "merged";
 
 export type CheckStatus = "SUCCESS" | "FAILURE" | "PENDING" | "ERROR" | "EXPECTED" | null;
 
@@ -47,6 +49,8 @@ export type PullRequest = {
   isDraft: boolean;
   createdAt: string;
   updatedAt: string;
+  /** Set only on merged PRs shown alongside their open linked PRs. */
+  mergedAt: string | null;
   additions: number;
   deletions: number;
   changedFiles: number;
@@ -98,5 +102,7 @@ export type RepoGroup = {
 export type DashboardData = {
   viewer: Viewer;
   pullRequests: PullRequest[];
+  /** Merged PRs linked to an open PR, shown only when linked PRs are grouped. */
+  linkedMergedPullRequests: PullRequest[];
   repos: RepoGroup[];
 };

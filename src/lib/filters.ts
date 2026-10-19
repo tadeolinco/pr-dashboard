@@ -122,6 +122,23 @@ export function linkedGroupIdsWithStatus(prs: PullRequest[], status: ReviewStatu
 }
 
 /**
+ * With grouping on, adds the merged PRs whose linked group has a visible open
+ * PR. Merged PRs never show on their own.
+ */
+export function withLinkedMergedPullRequests(
+  visible: PullRequest[],
+  merged: PullRequest[],
+  filters: DashboardFilters,
+) {
+  if (filters.group !== "linked" || merged.length === 0) return visible;
+  const groups = new Set(visible.map((pr) => pr.linkedGroupId));
+  const extra = merged.filter(
+    (pr) => pr.linkedGroupId && groups.has(pr.linkedGroupId),
+  );
+  return extra.length ? [...visible, ...extra] : visible;
+}
+
+/**
  * Free-text search over title, number, repo, branch and author. Every
  * whitespace-separated term must match somewhere.
  */

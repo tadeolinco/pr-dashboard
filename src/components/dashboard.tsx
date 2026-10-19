@@ -6,6 +6,7 @@ import { useApp } from "@/lib/app-context";
 import {
   filterPullRequests,
   searchPullRequests,
+  withLinkedMergedPullRequests,
   withoutLocalSessionFilters,
   type DashboardFilters,
 } from "@/lib/filters";
@@ -31,7 +32,11 @@ export function Dashboard({
   const scoped = filters.repo
     ? searched.filter((pr) => pr.repository.nameWithOwner === filters.repo)
     : searched;
-  const visible = filterPullRequests(searched, tableFilters);
+  const visible = withLinkedMergedPullRequests(
+    filterPullRequests(searched, tableFilters),
+    data.linkedMergedPullRequests,
+    filters,
+  );
   const reviewQueue = useReviewQueue(data.viewer.login);
 
   return (

@@ -110,6 +110,7 @@ export const STATUS_LABELS: Record<ReviewStatus, string> = {
   commented: "Commented",
   changes_requested: "Changes requested",
   approved: "Approved",
+  merged: "Merged",
 };
 
 export const STATUS_ORDER: ReviewStatus[] = [
@@ -118,4 +119,5 @@ export const STATUS_ORDER: ReviewStatus[] = [
   "commented",
   "changes_requested",
   "approved",
+  "merged",
 ];

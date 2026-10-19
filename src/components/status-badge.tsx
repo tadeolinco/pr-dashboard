@@ -14,6 +14,8 @@ const STATUS_STYLES: Record<ReviewStatus, string> = {
     "border-transparent bg-red-500/15 text-red-700 dark:text-red-300",
   approved:
     "border-transparent bg-emerald-500/15 text-emerald-700 dark:text-emerald-300",
+  merged:
+    "border-transparent bg-violet-500/15 text-violet-700 dark:text-violet-300",
 };
 
 export function StatusBadge({ status }: { status: ReviewStatus }) {

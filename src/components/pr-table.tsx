@@ -49,6 +49,7 @@ import type {
   PullRequest,
   TeamReviewer,
 } from "@/lib/types";
+import { cn } from "@/lib/utils";
 import { useEffect, useMemo, useState } from "react";
 
 const LOCAL_SESSION_SORT_KEYS = new Set<PrSortKey>([
@@ -266,9 +267,10 @@ export function PrTable({
           return (
             <TableRow
               key={pr.id}
-              className={
-                inMultiLinkedGroup ? "bg-muted/20 hover:bg-muted/30" : undefined
-              }
+              className={cn(
+                inMultiLinkedGroup && "bg-muted/20 hover:bg-muted/30",
+                pr.status === "merged" && "text-muted-foreground",
+              )}
             >
               <TableCell className="py-1">
                 <RepoBadge

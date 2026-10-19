@@ -41,6 +41,7 @@ const STATUS_RANK: Record<ReviewStatus, number> = {
   commented: 2,
   changes_requested: 3,
   approved: 4,
+  merged: 5,
 };
 
 export function defaultSortDirection(key: PrSortKey): SortDirection {

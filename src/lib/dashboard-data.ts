@@ -6,6 +6,7 @@ import {
 import {
     MissingGithubTokenError,
     fetchGithubPullRequests,
+    fetchLinkedMergedPullRequests,
 } from "@/lib/github";
 import { assignLinkedPullRequestGroups } from "@/lib/pr-links";
 import { fetchMyReviewQueuePullRequests } from "@/lib/review-queue";
@@ -19,9 +20,12 @@ const DOCS_TTL_MS = 30_000;
 
 type CacheEntry<T> = { key: string; value: T; expiresAt: number };
 
-let githubDashboardCache: CacheEntry<
-  Pick<DashboardData, "viewer" | "pullRequests">
-> | null = null;
+type GithubDashboard = Pick<
+  DashboardData,
+  "viewer" | "pullRequests" | "linkedMergedPullRequests"
+>;
+
+let githubDashboardCache: CacheEntry<GithubDashboard> | null = null;
 let reviewQueueCache: CacheEntry<PullRequest[]> | null = null;
 let docsIndexCache: {
   root: FileSystemDirectoryHandle;
@@ -38,13 +42,20 @@ export function invalidateDashboardCaches() {
 export async function getCachedGithubDashboard(
   token: string,
   scope: PrScope,
-): Promise<Pick<DashboardData, "viewer" | "pullRequests">> {
+): Promise<GithubDashboard> {
   const key = `${token}:${scopeKey(scope)}`;
   const hit = readCache(githubDashboardCache, key);
   if (hit) return hit;
 
   const { viewer, pullRequests } = await fetchGithubPullRequests(token, scope);
-  const value = { viewer, pullRequests };
+  // Merged PRs only fill out linked groups; a failed lookup shouldn't take the
+  // dashboard down with it.
+  const linkedMergedPullRequests = await fetchLinkedMergedPullRequests(
+    token,
+    scope,
+    pullRequests,
+  ).catch(() => []);
+  const value = { viewer, pullRequests, linkedMergedPullRequests };
   githubDashboardCache = {
     key,
     value,
@@ -94,8 +105,9 @@ export async function assembleDashboardData(
   scope: PrScope,
   docsRoot: FileSystemDirectoryHandle | null = null,
 ): Promise<DashboardData> {
-  const { viewer, pullRequests } = await getCachedGithubDashboard(token, scope);
-  assignLinkedPullRequestGroups(pullRequests);
+  const { viewer, pullRequests, linkedMergedPullRequests } =
+    await getCachedGithubDashboard(token, scope);
+  assignLinkedPullRequestGroups([...pullRequests, ...linkedMergedPullRequests]);
   if (docsRoot) {
     const docsIndex = await getCachedDocsIndex(docsRoot);
     enrichPullRequestsWithDocs(pullRequests, docsIndex);
@@ -104,6 +116,7 @@ export async function assembleDashboardData(
   return {
     viewer,
     pullRequests,
+    linkedMergedPullRequests,
     repos: groupByRepository(pullRequests),
   };
 }
