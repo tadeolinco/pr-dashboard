@@ -33,7 +33,13 @@ export function extractPullRequestMentions(
     add(`${match[1]}/${match[2]}`, Number.parseInt(match[3], 10));
   }
 
-  for (const match of body.matchAll(
+  // Shorthand refs only count in plain text: `[#12](…/security/dependabot/12)`
+  // is an alert, and a PR link's target was already picked up above.
+  const text = body
+    .replace(/\[[^\]]*\]\([^)]*\)/g, " ")
+    .replace(/https?:\/\/\S+/g, " ");
+
+  for (const match of text.matchAll(
     /(?:^|[\s([{])((?:[\w.-]+\/)?[\w.-]+)#(\d+)\b/g,
   )) {
     const raw = match[1];
@@ -47,7 +53,7 @@ export function extractPullRequestMentions(
     }
   }
 
-  for (const match of body.matchAll(/#(\d+)\b/g)) {
+  for (const match of text.matchAll(/#(\d+)\b/g)) {
     add(defaultNameWithOwner, Number.parseInt(match[1], 10));
   }
 
