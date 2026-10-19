@@ -85,9 +85,18 @@ export function dashboardHref(filters: DashboardFilters) {
 }
 
 export function filterPullRequests(prs: PullRequest[], filters: DashboardFilters) {
+  const matchingGroups =
+    filters.status && filters.status !== "all" && filters.group === "linked"
+      ? linkedGroupIdsWithStatus(prs, filters.status)
+      : null;
   return prs.filter((pr) => {
     if (filters.repo && pr.repository.nameWithOwner !== filters.repo) return false;
-    if (filters.status && filters.status !== "all" && pr.status !== filters.status) {
+    if (
+      filters.status &&
+      filters.status !== "all" &&
+      pr.status !== filters.status &&
+      !(pr.linkedGroupId && matchingGroups?.has(pr.linkedGroupId))
+    ) {
       return false;
     }
     if (filters.session === "missing-review" && hasReviewSession(pr)) {
@@ -98,6 +107,18 @@ export function filterPullRequests(prs: PullRequest[], filters: DashboardFilters
     if (filters.review === "not-clean" && !isNotCleanReview(pr)) return false;
     return true;
   });
+}
+
+/**
+ * Linked groups with at least one PR in `status`. With grouping on, a status
+ * filter keeps the whole group so the other PRs in it show next to the match.
+ */
+export function linkedGroupIdsWithStatus(prs: PullRequest[], status: ReviewStatus) {
+  const ids = new Set<string>();
+  for (const pr of prs) {
+    if (pr.status === status && pr.linkedGroupId) ids.add(pr.linkedGroupId);
+  }
+  return ids;
 }
 
 /**

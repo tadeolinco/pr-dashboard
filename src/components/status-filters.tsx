@@ -1,4 +1,8 @@
-import { dashboardHref, type DashboardFilters } from "@/lib/filters";
+import {
+  dashboardHref,
+  linkedGroupIdsWithStatus,
+  type DashboardFilters,
+} from "@/lib/filters";
 import { formatCount } from "@/lib/format";
 import { AppLink } from "@/lib/navigation";
 import { countMultiLinkedPullRequests } from "@/lib/pr-links";
@@ -13,6 +17,7 @@ const STATUS_CHIPS: ReviewStatus[] = [
   "review_requested",
   "commented",
   "changes_requested",
+  "approved",
 ];
 
 export function StatusFilters({
@@ -59,6 +64,9 @@ export function StatusFilters({
       />
       {STATUS_CHIPS.map((status) => {
         const active = filters.status === status;
+        const matchingGroups = groupLinkedActive
+          ? linkedGroupIdsWithStatus(pullRequests, status)
+          : null;
         return (
           <FilterChip
             key={status}
@@ -70,7 +78,14 @@ export function StatusFilters({
             })}
             active={active}
             label={STATUS_LABELS[status]}
-            count={pullRequests.filter((pr) => pr.status === status).length}
+            count={
+              pullRequests.filter(
+                (pr) =>
+                  pr.status === status ||
+                  (pr.linkedGroupId !== null &&
+                    matchingGroups?.has(pr.linkedGroupId)),
+              ).length
+            }
           />
         );
       })}
