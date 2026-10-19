@@ -34,9 +34,10 @@ export function extractPullRequestMentions(
   }
 
   // Shorthand refs only count in plain text: `[#12](…/security/dependabot/12)`
-  // is an alert, and a PR link's target was already picked up above.
+  // is an alert, and a PR link's target was already picked up above. Link
+  // text may hold one level of brackets, as in `[[Area] title (#12)](…)`.
   const text = body
-    .replace(/\[[^\]]*\]\([^)]*\)/g, " ")
+    .replace(/\[(?:[^[\]]|\[[^[\]]*\])*\]\([^)]*\)/g, " ")
     .replace(/https?:\/\/\S+/g, " ");
 
   for (const match of text.matchAll(
@@ -53,7 +54,8 @@ export function extractPullRequestMentions(
     }
   }
 
-  for (const match of text.matchAll(/#(\d+)\b/g)) {
+  // Bare `#12`; the `repo#12` / `owner/repo#12` forms were handled above.
+  for (const match of text.matchAll(/(?<![\w./-])#(\d+)\b/g)) {
     add(defaultNameWithOwner, Number.parseInt(match[1], 10));
   }
 
