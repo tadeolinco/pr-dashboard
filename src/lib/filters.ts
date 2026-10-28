@@ -22,6 +22,8 @@ export type DashboardFilters = {
   group?: PrGroupMode;
   /** Show merged PRs linked from visible open PRs. Off by default. */
   merged?: boolean;
+  /** With Group linked on, leave out the linked open PRs by someone else. */
+  hideOthers?: boolean;
   /** `?advanced=true` reveals advanced settings; it never changes what they're set to. */
   advanced?: boolean;
 };
@@ -38,6 +40,7 @@ export function parseFiltersFromSearch(search: string): DashboardFilters {
     review: params.get("review") ?? undefined,
     group: params.get("group") ?? undefined,
     merged: params.get("merged") ?? undefined,
+    others: params.get("others") ?? undefined,
     advanced: params.get("advanced") ?? undefined,
   });
 }
@@ -50,6 +53,7 @@ export function parseFilters(searchParams: {
   review?: string | string[];
   group?: string | string[];
   merged?: string | string[];
+  others?: string | string[];
   advanced?: string | string[];
 }): DashboardFilters {
   const view = first(searchParams.view);
@@ -66,6 +70,7 @@ export function parseFilters(searchParams: {
     review: isReviewHealthFilter(review) ? review : undefined,
     group: group === "linked" ? "linked" : "flat",
     merged: first(searchParams.merged) === "true" || undefined,
+    hideOthers: first(searchParams.others) === "hide" || undefined,
     advanced: first(searchParams.advanced) === "true" || undefined,
   };
 }
@@ -85,6 +90,7 @@ export function dashboardHref(filters: DashboardFilters) {
   if (filters.review) params.set("review", filters.review);
   if (filters.group === "linked") params.set("group", "linked");
   if (filters.merged) params.set("merged", "true");
+  if (filters.hideOthers) params.set("others", "hide");
   if (filters.advanced) params.set("advanced", "true");
   const query = params.toString();
   return query ? `/?${query}` : "/";
@@ -129,8 +135,8 @@ export function linkedGroupIdsWithStatus(prs: PullRequest[], status: ReviewStatu
 
 /**
  * Adds the linked PRs whose group has a visible PR of yours: open PRs by
- * someone else only with Group linked on, merged PRs only with Show merged on.
- * Neither shows on its own.
+ * someone else only with Group linked on (and Hide others off), merged PRs only
+ * with Show merged on. Neither shows on its own.
  */
 export function withLinkedPullRequests(
   visible: PullRequest[],
@@ -138,7 +144,7 @@ export function withLinkedPullRequests(
   filters: DashboardFilters,
 ) {
   const extra = [
-    ...(filters.group === "linked"
+    ...(filters.group === "linked" && !filters.hideOthers
       ? linkedMergedPullRequests(visible, linked.open)
       : []),
     ...(filters.merged ? linkedMergedPullRequests(visible, linked.merged) : []),

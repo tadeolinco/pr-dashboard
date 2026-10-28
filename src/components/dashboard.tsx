@@ -53,6 +53,7 @@ export function Dashboard({
             <StatusFilters
               pullRequests={scoped}
               mergedPullRequests={data.linkedMergedPullRequests}
+              othersPullRequests={data.linkedOpenPullRequests}
               filters={filters}
               search={myPrsSearch}
               onSearchChange={setMyPrsSearch}

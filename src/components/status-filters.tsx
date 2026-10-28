@@ -24,6 +24,7 @@ const STATUS_CHIPS: ReviewStatus[] = [
 export function StatusFilters({
   pullRequests,
   mergedPullRequests,
+  othersPullRequests,
   filters,
   search,
   onSearchChange,
@@ -31,6 +32,8 @@ export function StatusFilters({
   pullRequests: PullRequest[];
   /** Merged PRs linked from `pullRequests`; the Show merged chip needs them. */
   mergedPullRequests?: PullRequest[];
+  /** Open PRs by someone else linked from `pullRequests`; the Hide others chip needs them. */
+  othersPullRequests?: PullRequest[];
   filters: DashboardFilters;
   search: string;
   onSearchChange: (search: string) => void;
@@ -52,6 +55,7 @@ export function StatusFilters({
           session: undefined,
           review: undefined,
           group: undefined,
+          hideOthers: undefined,
         })}
         active={allActive}
         label="All"
@@ -66,6 +70,16 @@ export function StatusFilters({
         label="Group linked"
         count={linkedPrCount}
       />
+      {groupLinkedActive && othersPullRequests ? (
+        <FilterChip
+          href={dashboardHref({ ...filters, hideOthers: !filters.hideOthers })}
+          active={Boolean(filters.hideOthers)}
+          label="Hide others"
+          count={
+            linkedMergedPullRequests(pullRequests, othersPullRequests).length
+          }
+        />
+      ) : null}
       {mergedPullRequests ? (
         <FilterChip
           href={dashboardHref({ ...filters, merged: !filters.merged })}
