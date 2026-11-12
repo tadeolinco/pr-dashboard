@@ -2,6 +2,7 @@ import { AppSettingsPanel } from "@/components/app-settings-panel";
 import { Dashboard } from "@/components/dashboard";
 import { DashboardSkeleton } from "@/components/dashboard-skeleton";
 import { RefreshButton } from "@/components/refresh-button";
+import { ThemeToggle } from "@/components/theme-toggle";
 import { BotSettingsPage } from "@/components/bot-settings-page";
 import { RepoSettingsPage } from "@/components/repo-settings-page";
 import { repositoryNameFromFullName } from "@/components/repo-badge";
@@ -341,6 +342,7 @@ function AppHeader({
         </div>
         <div className="flex items-center gap-3">
           <ReconnectDocsButton />
+          <ThemeToggle />
           <AppSettingsPanel />
           {login ? <RefreshButton /> : null}
           {login ? (

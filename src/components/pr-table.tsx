@@ -461,9 +461,9 @@ function teamInitials(team: TeamReviewer) {
 
 function SessionCell({ done }: { done: boolean }) {
   if (done) {
-    return <span className="text-emerald-700">Yes</span>;
+    return <span className="text-emerald-700 dark:text-emerald-300">Yes</span>;
   }
-  return <span className="text-amber-700">No</span>;
+  return <span className="text-amber-700 dark:text-amber-300">No</span>;
 }
 
 function ReviewCell({ pullRequest }: { pullRequest: PullRequest }) {
