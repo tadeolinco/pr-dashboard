@@ -25,6 +25,7 @@ export async function fetchMyReviewQueuePullRequests(
     token,
     viewerLogin,
     repoFullNames,
+    { includeDrafts: true },
   );
 
   return pullRequests.filter((pr) => allowed.has(prKey(pr)));

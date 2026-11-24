@@ -22,8 +22,8 @@ const LINKED_LOOKUPS_PER_QUERY = 20;
 
 // Searches cover every repo the token can see; results are then narrowed to
 // the user's chosen scope (see src/lib/scope.ts).
-const OPEN_AUTHORED_SEARCH = "is:pr is:open author:@me -is:draft";
-const REVIEW_REQUESTED_SEARCH = "is:pr is:open review-requested:@me -is:draft";
+const OPEN_AUTHORED_SEARCH = "is:pr is:open author:@me";
+const REVIEW_REQUESTED_SEARCH = "is:pr is:open review-requested:@me";
 
 const PULL_REQUEST_FIELDS = `
   id
@@ -222,7 +222,7 @@ export async function fetchGithubReviewRequestedPullRequests(
  * PRs mentioned in the open PRs' descriptions (stack tables, related PRs) that
  * the authored search didn't return, so a linked group still shows the parts
  * that already landed and open parts someone else owns. Mentions that are
- * issues, closed PRs, drafts or out of scope are dropped.
+ * issues, closed PRs or out of scope are dropped.
  */
 export async function fetchLinkedPullRequests(
   token: string,
@@ -262,7 +262,7 @@ export async function fetchLinkedPullRequests(
       }
       if (node.state === "MERGED") {
         merged.push({ ...pr, status: "merged", mergeStateStatus: null });
-      } else if (node.state === "OPEN" && !node.isDraft) {
+      } else if (node.state === "OPEN") {
         open.push(pr);
       }
     }
@@ -290,7 +290,7 @@ async function searchPullRequests(
     viewer = payload.viewer;
 
     for (const node of payload.search.nodes) {
-      if (!node || node.isDraft) continue;
+      if (!node) continue;
       if (!repoInScope(node.repository.nameWithOwner, scope)) continue;
       pullRequests.push(mapPullRequest(node));
     }

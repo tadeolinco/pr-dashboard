@@ -24,6 +24,8 @@ export type DashboardFilters = {
   merged?: boolean;
   /** With Group linked on, leave out the linked open PRs by someone else. */
   hideOthers?: boolean;
+  /** Leave out draft PRs. Drafts show by default. */
+  hideDrafts?: boolean;
   /** `?advanced=true` reveals advanced settings; it never changes what they're set to. */
   advanced?: boolean;
 };
@@ -41,6 +43,7 @@ export function parseFiltersFromSearch(search: string): DashboardFilters {
     group: params.get("group") ?? undefined,
     merged: params.get("merged") ?? undefined,
     others: params.get("others") ?? undefined,
+    drafts: params.get("drafts") ?? undefined,
     advanced: params.get("advanced") ?? undefined,
   });
 }
@@ -54,6 +57,7 @@ export function parseFilters(searchParams: {
   group?: string | string[];
   merged?: string | string[];
   others?: string | string[];
+  drafts?: string | string[];
   advanced?: string | string[];
 }): DashboardFilters {
   const view = first(searchParams.view);
@@ -71,6 +75,7 @@ export function parseFilters(searchParams: {
     group: group === "linked" ? "linked" : "flat",
     merged: first(searchParams.merged) === "true" || undefined,
     hideOthers: first(searchParams.others) === "hide" || undefined,
+    hideDrafts: first(searchParams.drafts) === "hide" || undefined,
     advanced: first(searchParams.advanced) === "true" || undefined,
   };
 }
@@ -91,6 +96,7 @@ export function dashboardHref(filters: DashboardFilters) {
   if (filters.group === "linked") params.set("group", "linked");
   if (filters.merged) params.set("merged", "true");
   if (filters.hideOthers) params.set("others", "hide");
+  if (filters.hideDrafts) params.set("drafts", "hide");
   if (filters.advanced) params.set("advanced", "true");
   const query = params.toString();
   return query ? `/?${query}` : "/";
@@ -102,6 +108,7 @@ export function filterPullRequests(prs: PullRequest[], filters: DashboardFilters
       ? linkedGroupIdsWithStatus(prs, filters.status)
       : null;
   return prs.filter((pr) => {
+    if (filters.hideDrafts && pr.isDraft) return false;
     if (filters.repo && pr.repository.nameWithOwner !== filters.repo) return false;
     if (
       filters.status &&
@@ -136,7 +143,8 @@ export function linkedGroupIdsWithStatus(prs: PullRequest[], status: ReviewStatu
 /**
  * Adds the linked PRs whose group has a visible PR of yours: open PRs by
  * someone else only with Group linked on (and Hide others off), merged PRs only
- * with Show merged on. Neither shows on its own.
+ * with Show merged on. Neither shows on its own. Hide drafts drops linked
+ * drafts too.
  */
 export function withLinkedPullRequests(
   visible: PullRequest[],
@@ -149,7 +157,8 @@ export function withLinkedPullRequests(
       : []),
     ...(filters.merged ? linkedMergedPullRequests(visible, linked.merged) : []),
   ];
-  return extra.length ? [...visible, ...extra] : visible;
+  const kept = filters.hideDrafts ? extra.filter((pr) => !pr.isDraft) : extra;
+  return kept.length ? [...visible, ...kept] : visible;
 }
 
 /** PRs from `linked` in a linked group with at least one of `visible`. */

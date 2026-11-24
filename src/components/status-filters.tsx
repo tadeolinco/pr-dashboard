@@ -44,6 +44,7 @@ export function StatusFilters({
     !groupLinkedActive &&
     !filters.session &&
     !filters.review &&
+    !filters.hideDrafts &&
     (!filters.status || filters.status === "all");
 
   return (
@@ -56,6 +57,7 @@ export function StatusFilters({
           review: undefined,
           group: undefined,
           hideOthers: undefined,
+          hideDrafts: undefined,
         })}
         active={allActive}
         label="All"
@@ -90,6 +92,12 @@ export function StatusFilters({
           }
         />
       ) : null}
+      <FilterChip
+        href={dashboardHref({ ...filters, hideDrafts: !filters.hideDrafts })}
+        active={Boolean(filters.hideDrafts)}
+        label="Hide drafts"
+        count={pullRequests.filter((pr) => pr.isDraft).length}
+      />
       {STATUS_CHIPS.map((status) => {
         const active = filters.status === status;
         const matchingGroups = groupLinkedActive

@@ -302,6 +302,11 @@ export function PrTable({
                   >
                     {pr.title}
                   </AppLink>
+                  {pr.isDraft ? (
+                    <span className="shrink-0 rounded border px-1 text-[10px] leading-4 font-medium text-muted-foreground">
+                      Draft
+                    </span>
+                  ) : null}
                   {pr.linkedAuthor ? (
                     <span className="shrink-0 text-xs text-muted-foreground">
                       @{pr.linkedAuthor}
