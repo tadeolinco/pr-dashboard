@@ -30,13 +30,34 @@ export async function loadDocsFolder(): Promise<DocsFolderState> {
   if (!supportsDocsFolder()) {
     return { access: "unsupported", handle: null, name: null };
   }
-  const saved = await readSavedHandle();
+  const saved = await withTimeout(readSavedHandle(), null);
   if (!saved) return { access: "not-chosen", handle: null, name: null };
-  const permission = await saved.queryPermission(READ);
+  // Chrome can leave this pending forever on a saved handle. Treat that as
+  // "ask again" so the dashboard still loads and Reconnect shows.
+  const permission = await withTimeout(saved.queryPermission(READ), "prompt");
   if (permission === "granted") {
     return { access: "granted", handle: saved, name: saved.name };
   }
   return { access: "needs-permission", handle: null, name: saved.name };
+}
+
+const DOCS_CHECK_TIMEOUT_MS = 2000;
+
+/** Resolves to `fallback` when `promise` takes longer than the docs check allows or fails. */
+function withTimeout<T, F>(promise: Promise<T>, fallback: F): Promise<T | F> {
+  return new Promise((resolve) => {
+    const timer = setTimeout(() => resolve(fallback), DOCS_CHECK_TIMEOUT_MS);
+    promise.then(
+      (value) => {
+        clearTimeout(timer);
+        resolve(value);
+      },
+      () => {
+        clearTimeout(timer);
+        resolve(fallback);
+      },
+    );
+  });
 }
 
 /** Opens the folder picker. Must run inside a click handler. */

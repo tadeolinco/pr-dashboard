@@ -1,5 +1,6 @@
 "use client";
 
+import { AppErrorBoundary } from "@/components/app-error-boundary";
 import { Providers } from "@/components/providers";
 import { applyTheme } from "@/lib/theme";
 import dynamic from "next/dynamic";
@@ -15,7 +16,9 @@ const App = dynamic(() => import("@/App").then((mod) => mod.App), {
 export function ClientApp() {
   return (
     <Providers>
-      <App />
+      <AppErrorBoundary>
+        <App />
+      </AppErrorBoundary>
     </Providers>
   );
 }
